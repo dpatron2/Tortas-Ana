@@ -4,6 +4,7 @@ import {
   ChefHat, Package, TrendingUp, Plus, Trash2, ChevronRight, 
   ArrowLeft, Save, DollarSign, ShoppingCart, Calendar, User, Clock, CheckCircle2, Edit 
 } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 const App = () => {
   const [view, setView] = useState('dashboard'); 
@@ -25,7 +26,7 @@ const App = () => {
     if (ords) {
       setOrders(ords.map(o => ({
         id: o.id, recipeId: o.recipe_id, sizeId: o.size_id,
-        customer: o.customer, date: o.delivery_date, status: o.status
+        customer: o.customer, date: o.delivery_date, status: o.status, customPrice: o.custom_price
       })));
     }
 
@@ -234,7 +235,7 @@ const App = () => {
   };
 
   const OrdersView = () => {
-    const [newOrder, setNewOrder] = useState({ recipeId: recipes[0]?.id || '', sizeId: '', customer: '', date: '' });
+    const [newOrder, setNewOrder] = useState({ recipeId: recipes[0]?.id || '', sizeId: '', customer: '', date: '', customPrice: '' });
     const [editOrderId, setEditOrderId] = useState(null);
     
     useEffect(() => {
@@ -251,7 +252,8 @@ const App = () => {
         size_id: newOrder.sizeId,
         customer: newOrder.customer,
         delivery_date: newOrder.date,
-        status: 'pending'
+        status: 'pending',
+        custom_price: newOrder.customPrice === '' ? null : Number(newOrder.customPrice)
       };
 
       if (editOrderId) {
@@ -259,19 +261,19 @@ const App = () => {
         if (data) {
           setOrders(orders.map(o => o.id === editOrderId ? {
             id: data[0].id, recipeId: data[0].recipe_id, sizeId: data[0].size_id,
-            customer: data[0].customer, date: data[0].delivery_date, status: data[0].status
+            customer: data[0].customer, date: data[0].delivery_date, status: data[0].status, customPrice: data[0].custom_price
           } : o));
           setEditOrderId(null);
-          setNewOrder({ recipeId: recipes[0]?.id || '', sizeId: '', customer: '', date: '' });
+          setNewOrder({ recipeId: recipes[0]?.id || '', sizeId: '', customer: '', date: '', customPrice: '' });
         }
       } else {
         const { data } = await supabase.from('orders').insert([payload]).select();
         if (data) {
           setOrders([...orders, {
             id: data[0].id, recipeId: data[0].recipe_id, sizeId: data[0].size_id,
-            customer: data[0].customer, date: data[0].delivery_date, status: data[0].status
+            customer: data[0].customer, date: data[0].delivery_date, status: data[0].status, customPrice: data[0].custom_price
           }]);
-          setNewOrder({ recipeId: recipes[0]?.id || '', sizeId: '', customer: '', date: '' });
+          setNewOrder({ recipeId: recipes[0]?.id || '', sizeId: '', customer: '', date: '', customPrice: '' });
         }
       }
     };
@@ -285,7 +287,7 @@ const App = () => {
       const size = recipe?.sizes.find(s => s.id === order.sizeId);
       
       if (recipe && size) {
-        const total = recipe.basePrice * size.multiplier;
+        const total = order.customPrice ? Number(order.customPrice) : (recipe.basePrice * size.multiplier);
         const { data } = await supabase.from('sales').insert([{
           recipe_id: recipe.id,
           recipe_name: `${recipe.name} (${size.name}) [Pedido: ${order.customer}]`,
@@ -310,7 +312,7 @@ const App = () => {
 
     const startEditOrder = (order) => {
       setEditOrderId(order.id);
-      setNewOrder({ recipeId: order.recipeId, sizeId: order.sizeId, customer: order.customer, date: order.date });
+      setNewOrder({ recipeId: order.recipeId, sizeId: order.sizeId, customer: order.customer, date: order.date, customPrice: order.customPrice || '' });
     };
 
     return (
@@ -344,18 +346,27 @@ const App = () => {
                 <input type="text" placeholder="Nombre del cliente" className="w-full p-3 pl-10 rounded-xl outline-none text-sm bg-white" value={newOrder.customer} onChange={e => setNewOrder({...newOrder, customer: e.target.value})} />
               </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-yellow-600 ml-1">FECHA DE ENTREGA</label>
-              <div className="relative">
-                <Calendar size={16} className="absolute left-3 top-3 text-yellow-400" />
-                <input type="date" className="w-full p-3 pl-10 rounded-xl outline-none text-sm bg-white" value={newOrder.date} onChange={e => setNewOrder({...newOrder, date: e.target.value})} />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-yellow-600 ml-1">FECHA DE ENTREGA</label>
+                <div className="relative">
+                  <Calendar size={16} className="absolute left-3 top-3 text-yellow-400" />
+                  <input type="date" className="w-full p-3 pl-10 rounded-xl outline-none text-sm bg-white" value={newOrder.date} onChange={e => setNewOrder({...newOrder, date: e.target.value})} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-yellow-600 ml-1">PRECIO (OPCIONAL)</label>
+                <div className="relative">
+                  <DollarSign size={16} className="absolute left-3 top-3 text-yellow-400" />
+                  <input type="number" placeholder="Ej: 50000" className="w-full p-3 pl-10 rounded-xl outline-none text-sm bg-white" value={newOrder.customPrice} onChange={e => setNewOrder({...newOrder, customPrice: e.target.value === '' ? '' : Number(e.target.value)})} />
+                </div>
               </div>
             </div>
             <div className="flex gap-2">
               <button onClick={saveOrder} className="flex-1 bg-yellow-600 text-white p-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-yellow-100">
                 <Save size={20} /> {editOrderId ? 'Actualizar Pedido' : 'Agendar Pedido'}
               </button>
-              {editOrderId && <button onClick={() => {setEditOrderId(null); setNewOrder({ recipeId: recipes[0]?.id || '', sizeId: '', customer: '', date: '' });}} className="bg-gray-300 text-gray-700 px-4 rounded-xl font-bold">Cancelar</button>}
+              {editOrderId && <button onClick={() => {setEditOrderId(null); setNewOrder({ recipeId: recipes[0]?.id || '', sizeId: '', customer: '', date: '', customPrice: '' });}} className="bg-gray-300 text-gray-700 px-4 rounded-xl font-bold">Cancelar</button>}
             </div>
           </div>
         </div>
@@ -372,6 +383,7 @@ const App = () => {
                     <p className="font-bold text-gray-800">{recipe?.name || 'Receta eliminada'} <span className="text-xs text-yellow-600">({size?.name || 'N/A'})</span></p>
                     <div className="flex items-center gap-2 text-xs text-gray-500"><User size={12} /> {order.customer}</div>
                     <div className="flex items-center gap-2 text-xs font-bold text-pink-500"><Clock size={12} /> {new Date(order.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</div>
+                    {order.customPrice && <div className="flex items-center gap-1 text-xs font-bold text-green-600 mt-1"><DollarSign size={12}/>Precio fijado: ${order.customPrice.toLocaleString()}</div>}
                   </div>
                   <button onClick={() => completeOrder(order)} className="bg-green-50 text-green-600 p-2 rounded-full hover:bg-green-600 hover:text-white transition-colors">
                     <CheckCircle2 size={24} />
@@ -520,33 +532,6 @@ const App = () => {
   };
 
   const SalesView = () => {
-    const [sel, setSel] = useState(recipes[0]?.id || '');
-    const [sz, setSz] = useState('');
-    const [q, setQ] = useState(1);
-    const activeR = recipes.find(r => r.id === sel);
-    
-    useEffect(() => { if (activeR) setSz(activeR.sizes[0]?.id || ''); }, [sel, activeR]);
-
-    const addSale = async () => {
-      const size = activeR.sizes.find(s => s.id === sz);
-      const total = activeR.basePrice * size.multiplier * q;
-      const { data } = await supabase.from('sales').insert([{
-        recipe_id: sel,
-        recipe_name: `${activeR.name} (${size.name})`,
-        total_price: total,
-        multiplier: size.multiplier,
-        quantity: q
-      }]).select();
-      
-      if (data) {
-        setSales([{
-          id: data[0].id, recipeId: data[0].recipe_id, recipeName: data[0].recipe_name,
-          totalPrice: data[0].total_price, multiplier: data[0].multiplier, quantity: data[0].quantity, date: data[0].sale_date
-        }, ...sales]);
-        setQ(1);
-      }
-    };
-
     const deleteSale = async (id) => {
       await supabase.from('sales').delete().eq('id', id);
       setSales(sales.filter(s => s.id !== id));
@@ -568,9 +553,23 @@ const App = () => {
       return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
     }).reduce((acc, s) => acc + s.totalPrice, 0);
 
+    // Calculate data for chart
+    const salesByRecipe = sales.reduce((acc, sale) => {
+      const recipe = recipes.find(r => r.id === sale.recipeId);
+      const name = recipe ? recipe.name : 'Otra';
+      acc[name] = (acc[name] || 0) + 1;
+      return acc;
+    }, {});
+
+    const chartData = Object.keys(salesByRecipe).map(name => ({
+      name, value: salesByRecipe[name]
+    }));
+
+    const COLORS = ['#ec4899', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
+
     return (
       <div className="p-4 space-y-6 pb-24 text-left">
-        <header className="flex items-center gap-4"><button onClick={() => setView('dashboard')} className="p-2 bg-gray-100 rounded-full"><ArrowLeft size={20}/></button><h1 className="text-xl font-bold">Ventas</h1></header>
+        <header className="flex items-center gap-4"><button onClick={() => setView('dashboard')} className="p-2 bg-gray-100 rounded-full"><ArrowLeft size={20}/></button><h1 className="text-xl font-bold">Historial de Ventas</h1></header>
         
         {/* Resumen de ventas */}
         <div className="grid grid-cols-2 gap-4">
@@ -584,14 +583,22 @@ const App = () => {
           </div>
         </div>
 
-        <div className="bg-gray-50 border p-5 rounded-2xl space-y-4">
-          <h3 className="font-bold text-gray-700 text-xs uppercase">Registrar Venta</h3>
-          <select className="w-full p-3 rounded-xl outline-none bg-white" value={sel} onChange={e => setSel(e.target.value)}>
-            {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-          <div className="flex flex-wrap gap-2">{activeR?.sizes.map(s => <button key={s.id} onClick={() => setSz(s.id)} className={`px-3 py-2 rounded-xl text-xs font-bold ${sz === s.id ? 'bg-gray-800 text-white' : 'bg-white text-gray-400 border'}`}>{s.name}</button>)}</div>
-          <div className="flex justify-between items-center"><input type="number" className="w-20 p-3 rounded-xl outline-none" value={q} onChange={e => setQ(e.target.value === '' ? '' : Number(e.target.value))} /><button onClick={addSale} className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2"><Plus size={20} /> Vender</button></div>
-        </div>
+        {/* Gráfico */}
+        {chartData.length > 0 && (
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+            <h3 className="font-bold text-gray-700 text-xs uppercase mb-4 tracking-widest text-center">Tipos de Tortas Vendidas</h3>
+            <div className="h-48 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={chartData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="value">
+                    {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
         
         <div className="space-y-2">
           <h3 className="font-bold text-gray-400 text-xs uppercase pt-2 tracking-widest px-1">Historial Reciente</h3>
