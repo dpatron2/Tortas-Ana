@@ -416,20 +416,35 @@ const App = () => {
     
     const saveRecipe = async () => {
       let rId = recipeData.id;
+      const oldSizes = rId ? (recipes.find(r => r.id === rId)?.sizes || []) : [];
+
       if (!rId) {
         const { data: rData } = await supabase.from('recipes').insert([{ name: recipeData.name, base_price: recipeData.basePrice }]).select();
         rId = rData[0].id;
       } else {
         await supabase.from('recipes').update({ name: recipeData.name, base_price: recipeData.basePrice }).eq('id', rId);
         await supabase.from('recipe_items').delete().eq('recipe_id', rId);
-        await supabase.from('recipe_sizes').delete().eq('recipe_id', rId);
       }
       
       if (recipeData.items.length) {
         await supabase.from('recipe_items').insert(recipeData.items.map(i => ({ recipe_id: rId, ingredient_id: i.ingredientId, quantity: i.quantity })));
       }
-      if (recipeData.sizes.length) {
-        await supabase.from('recipe_sizes').insert(recipeData.sizes.map(s => ({ recipe_id: rId, name: s.name, multiplier: s.multiplier })));
+      
+      for (const size of recipeData.sizes) {
+        if (!size.id || size.id.toString().length < 30) {
+          await supabase.from('recipe_sizes').insert([{ recipe_id: rId, name: size.name, multiplier: size.multiplier }]);
+        } else {
+          await supabase.from('recipe_sizes').update({ name: size.name, multiplier: size.multiplier }).eq('id', size.id);
+        }
+      }
+
+      const newSizeIds = recipeData.sizes.map(s => s.id);
+      const sizesToDelete = oldSizes.filter(old => !newSizeIds.includes(old.id));
+      for (const del of sizesToDelete) {
+        const { error } = await supabase.from('recipe_sizes').delete().eq('id', del.id);
+        if (error && error.code === '23503') {
+          alert(`No se puede eliminar el tamaño "${del.name}" porque está asociado a un pedido activo.`);
+        }
       }
       
       fetchData();
