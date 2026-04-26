@@ -474,7 +474,7 @@ const App = () => {
              </div>
              <div className="flex-1 text-right">
                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Precio Venta (1x)</p>
-               <input type="number" className="text-xl font-black text-green-600 w-full text-right outline-none" value={recipeData.basePrice} onChange={e => setRecipeData({...recipeData, basePrice: Number(e.target.value)})} />
+               <input type="number" className="text-xl font-black text-green-600 w-full text-right outline-none" value={recipeData.basePrice} onChange={e => setRecipeData({...recipeData, basePrice: e.target.value === '' ? '' : Number(e.target.value)})} />
              </div>
            </div>
         </div>
@@ -489,7 +489,7 @@ const App = () => {
                  {ingredients.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
                </select>
                <input type="number" className="w-16 font-bold text-sm outline-none" value={item.quantity} onChange={e => {
-                 const newI = [...recipeData.items]; newI[idx].quantity = Number(e.target.value); setRecipeData({...recipeData, items: newI});
+                 const newI = [...recipeData.items]; newI[idx].quantity = e.target.value === '' ? '' : Number(e.target.value); setRecipeData({...recipeData, items: newI});
                }} />
                <button onClick={() => setRecipeData({...recipeData, items: recipeData.items.filter((_, i) => i !== idx)})}><Trash2 size={14} className="text-red-300" /></button>
              </div>
@@ -504,7 +504,7 @@ const App = () => {
                  const newS = [...recipeData.sizes]; newS[idx].name = e.target.value; setRecipeData({...recipeData, sizes: newS});
                }} />
                <input type="number" step="0.1" className="w-14 font-bold text-sm outline-none px-1 rounded bg-white" value={s.multiplier} onChange={e => {
-                 const newS = [...recipeData.sizes]; newS[idx].multiplier = Number(e.target.value); setRecipeData({...recipeData, sizes: newS});
+                 const newS = [...recipeData.sizes]; newS[idx].multiplier = e.target.value === '' ? '' : Number(e.target.value); setRecipeData({...recipeData, sizes: newS});
                }} />
                <button onClick={() => setRecipeData({...recipeData, sizes: recipeData.sizes.filter((_, i) => i !== idx)})}><Trash2 size={14} className="text-red-300" /></button>
              </div>
@@ -590,7 +590,7 @@ const App = () => {
             {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
           <div className="flex flex-wrap gap-2">{activeR?.sizes.map(s => <button key={s.id} onClick={() => setSz(s.id)} className={`px-3 py-2 rounded-xl text-xs font-bold ${sz === s.id ? 'bg-gray-800 text-white' : 'bg-white text-gray-400 border'}`}>{s.name}</button>)}</div>
-          <div className="flex justify-between items-center"><input type="number" className="w-20 p-3 rounded-xl outline-none" value={q} onChange={e => setQ(Number(e.target.value))} /><button onClick={addSale} className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2"><Plus size={20} /> Vender</button></div>
+          <div className="flex justify-between items-center"><input type="number" className="w-20 p-3 rounded-xl outline-none" value={q} onChange={e => setQ(e.target.value === '' ? '' : Number(e.target.value))} /><button onClick={addSale} className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2"><Plus size={20} /> Vender</button></div>
         </div>
         
         <div className="space-y-2">
